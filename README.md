@@ -43,7 +43,7 @@ npm run pages:dev
 在 Pages 项目的 **Settings → Environment variables** 中，为 Production 和 Preview 添加：
 
 ```text
-APP_PASSWORD = 9527
+APP_PASSWORD = xxxx
 SESSION_SECRET = 一段至少32字符的随机字符串
 ```
 
