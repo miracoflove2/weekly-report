@@ -1,0 +1,2 @@
+APP_PASSWORD=9527
+SESSION_SECRET=replace-with-a-random-string-of-at-least-32-characters
