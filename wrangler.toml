@@ -1,3 +1,7 @@
 name = "weekly-report"
 pages_build_output_dir = "./dist"
 compatibility_date = "2026-05-22"
+
+[[kv_namespaces]]
+binding = "WEEKLY_REPORTS"
+id = "756f128a4d1846a38df5c0dd59229f"
