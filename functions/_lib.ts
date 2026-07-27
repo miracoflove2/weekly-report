@@ -81,14 +81,15 @@ export function validateSection(section: string): section is SectionName {
 }
 
 export function validateItem(body: Record<string, unknown>, expectedId?: string): string | ProjectItem {
-  const allowed = new Set(["id", "task", "assignee", "startDate", "dueDate", "statusOverride", "note", "updatedAt", "requestId"]);
+  const allowed = new Set(["id", "task", "assignee", "startDate", "dueDate", "completedDate", "statusOverride", "note", "updatedAt", "requestId"]);
   if (Object.keys(body).some((key) => !allowed.has(key))) return "包含不支持的字段";
   if (typeof body.id !== "string" || !validId(body.id) || (expectedId && body.id !== expectedId)) return "项目 ID 无效";
   if (typeof body.task !== "string" || !body.task.trim() || body.task.length > 200) return "待办事项应为 1—200 个字符";
   if (typeof body.assignee !== "string" || !(ASSIGNEES as readonly string[]).includes(body.assignee)) return `执行人“${String(body.assignee)}”不在固定名单中`;
   if (!validDate(body.startDate) || !validDate(body.dueDate)) return "开始时间或截止日期无效";
   if (body.dueDate < body.startDate) return "截止日期不能早于开始时间";
-  if (body.statusOverride !== null && !(STATUSES as readonly unknown[]).includes(body.statusOverride)) return "状态值无效";
+  if (body.completedDate !== "" && !validDate(body.completedDate)) return "完成时间无效";
+  if (!(STATUSES as readonly unknown[]).includes(body.statusOverride)) return "状态值无效";
   if (typeof body.note !== "string" || body.note.length > 1000) return "备注不能超过 1000 个字符";
   if (!validateRequestId(body.requestId)) return "requestId 无效";
   return {
@@ -97,6 +98,7 @@ export function validateItem(body: Record<string, unknown>, expectedId?: string)
     assignee: body.assignee,
     startDate: body.startDate,
     dueDate: body.dueDate,
+    completedDate: body.completedDate as string,
     statusOverride: body.statusOverride as ProjectItem["statusOverride"],
     note: body.note,
     updatedAt: new Date().toISOString(),

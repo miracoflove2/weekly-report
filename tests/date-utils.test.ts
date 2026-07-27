@@ -38,7 +38,7 @@ describe("周报日期工具", () => {
   it("按开始时间、截止日期升序排列项目", () => {
     const makeItem = (id: string, startDate: string, dueDate: string) => ({
       id, startDate, dueDate, task: id, assignee: "曾鑫", statusOverride: null,
-      note: "", updatedAt: "", requestId: id,
+      completedDate: "", note: "", updatedAt: "", requestId: id,
     }) as ProjectItem;
     const items = [
       makeItem("c", "2026-07-22", "2026-07-30"),

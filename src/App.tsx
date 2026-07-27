@@ -5,6 +5,8 @@ import {
   useState,
   type TextareaHTMLAttributes,
 } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   createItem,
   getReport,
@@ -15,8 +17,6 @@ import {
 } from "./api";
 import {
   addDays,
-  automaticStatus,
-  compareProjectItems,
   deadlineLabel,
   displayDate,
   getMonday,
@@ -51,11 +51,53 @@ function emptyItem(): ProjectItem {
     assignee: ASSIGNEES[0],
     startDate: shanghaiToday(),
     dueDate: addDays(shanghaiToday(), 7),
-    statusOverride: null,
+    completedDate: "",
+    statusOverride: "未启动",
     note: "",
     updatedAt: new Date().toISOString(),
     requestId: makeRequestId(),
   };
+}
+
+type SortField = "task" | "assignee" | "startDate" | "dueDate" | "deadline"
+  | "completedDate" | "statusOverride" | "note" | "updatedAt";
+type SortDirection = "asc" | "desc";
+
+function displayUpdatedAt(value: string): string {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
+function MarkdownNote({
+  item,
+  onChange,
+  onBlur,
+}: {
+  item: ProjectItem;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}) {
+  const [editing, setEditing] = useState(!item.note);
+  if (editing) {
+    return <AutoGrowTextarea autoFocus value={item.note} maxLength={1000}
+      placeholder="添加备注，支持 Markdown"
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={() => { onBlur(); setEditing(false); }} />;
+  }
+  return (
+    <button className="markdown-note" type="button" onClick={() => setEditing(true)}
+      aria-label="编辑 Markdown 备注">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.note || "点击添加备注"}</ReactMarkdown>
+    </button>
+  );
 }
 
 function SaveBadge({ state }: { state: SaveState }) {
@@ -112,6 +154,8 @@ export default function App() {
   });
   const [itemStates, setItemStates] = useState<Record<string, SaveState>>({});
   const [toast, setToast] = useState("");
+  const [sortField, setSortField] = useState<SortField>("startDate");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const timers = useRef<Partial<Record<SectionName, ReturnType<typeof setTimeout>>>>({});
 
   const load = useCallback(async (targetWeek: string) => {
@@ -202,7 +246,13 @@ export default function App() {
       setToast("截止日期不能早于开始时间");
       return;
     }
-    const payload = { ...item, requestId: makeRequestId(), updatedAt: new Date().toISOString() };
+    const payload = {
+      ...item,
+      completedDate: item.completedDate || "",
+      statusOverride: item.statusOverride || "未启动",
+      requestId: makeRequestId(),
+      updatedAt: new Date().toISOString(),
+    };
     setItemStates((current) => ({ ...current, [id]: "saving" }));
     try {
       const saved = await updateItem(week, payload);
@@ -236,7 +286,31 @@ export default function App() {
   const moveWeek = (days: number) => setWeek((current) => addDays(current, days));
   const weekEnd = addDays(week, 6);
   const currentWeek = week === getMonday();
-  const sortedItems = [...report.items].sort(compareProjectItems);
+  const sortValue = (item: ProjectItem): string | number => {
+    if (sortField === "deadline") return item.dueDate ? new Date(item.dueDate).getTime() : 0;
+    return item[sortField] || "";
+  };
+  const sortedItems = [...report.items].sort((left, right) => {
+    const a = sortValue(left);
+    const b = sortValue(right);
+    const result = typeof a === "number" && typeof b === "number"
+      ? a - b
+      : String(a).localeCompare(String(b), "zh-CN");
+    return (sortDirection === "asc" ? result : -result) || left.id.localeCompare(right.id);
+  });
+  const toggleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDirection((current) => current === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+  const sortHeader = (field: SortField, label: string) => (
+    <button className="sort-button" type="button" onClick={() => toggleSort(field)}>
+      {label}<span aria-hidden="true">{sortField === field ? (sortDirection === "asc" ? " ↑" : " ↓") : " ↕"}</span>
+    </button>
+  );
 
   return (
     <div className="app-shell">
@@ -325,12 +399,20 @@ export default function App() {
               <div className="table-wrap">
                 <table>
                   <thead><tr>
-                    <th className="sticky-col">待办事项</th><th>执行人</th><th>开始时间</th>
-                    <th>截止日期</th><th>距离截止日</th><th>状态</th><th>备注</th><th>操作</th>
+                    <th className="sticky-col">{sortHeader("task", "待办事项")}</th>
+                    <th>{sortHeader("assignee", "执行人")}</th>
+                    <th>{sortHeader("startDate", "开始时间")}</th>
+                    <th>{sortHeader("dueDate", "截止日期")}</th>
+                    <th>{sortHeader("deadline", "距离截止日")}</th>
+                    <th>{sortHeader("completedDate", "完成时间")}</th>
+                    <th>{sortHeader("statusOverride", "状态")}</th>
+                    <th>{sortHeader("note", "备注")}</th>
+                    <th>{sortHeader("updatedAt", "更新时间")}</th>
+                    <th>操作</th>
                   </tr></thead>
                   <tbody>
                     {sortedItems.map((item) => {
-                      const status = item.statusOverride || automaticStatus(item.startDate, item.dueDate);
+                      const status = item.statusOverride || "未启动";
                       return (
                         <tr key={item.id}>
                           <td className="sticky-col">
@@ -348,6 +430,9 @@ export default function App() {
                             onBlur={() => void persistItem(item.id)} /></td>
                           <td><span className={`deadline ${deadlineLabel(item.dueDate).startsWith("已") ? "overdue" : ""}`}>
                             {deadlineLabel(item.dueDate)}</span></td>
+                          <td><input type="date" value={item.completedDate || ""}
+                            onChange={(e) => changeItem(item.id, "completedDate", e.target.value)}
+                            onBlur={() => void persistItem(item.id)} /></td>
                           <td>
                             <div className="status-cell">
                               <select className={`status-select status-${status}`} value={status}
@@ -355,36 +440,26 @@ export default function App() {
                                 onBlur={() => void persistItem(item.id)}>
                                 {STATUSES.map((value) => <option key={value}>{value}</option>)}
                               </select>
-                              {item.statusOverride && <button title="恢复自动判断" onClick={async () => {
-                                const next = { ...item, statusOverride: null, requestId: makeRequestId(), updatedAt: new Date().toISOString() };
-                                setReport((current) => ({ ...current, items: current.items.map((value) => value.id === item.id ? next : value) }));
-                                setItemStates((current) => ({ ...current, [item.id]: "saving" }));
-                                try {
-                                  const saved = await updateItem(week, next);
-                                  setReport((current) => ({ ...current, items: current.items.map((value) => value.id === item.id ? saved : value) }));
-                                  setItemStates((current) => ({ ...current, [item.id]: "saved" }));
-                                } catch {
-                                  setItemStates((current) => ({ ...current, [item.id]: "error" }));
-                                  setToast("恢复自动状态失败");
-                                }
-                              }}>自动</button>}
                             </div>
                           </td>
-                          <td><AutoGrowTextarea value={item.note} maxLength={1000} placeholder="添加备注，支持换行"
-                            onChange={(e) => changeItem(item.id, "note", e.target.value)}
+                          <td><MarkdownNote item={item}
+                            onChange={(value) => changeItem(item.id, "note", value)}
                             onBlur={() => void persistItem(item.id)} /></td>
+                          <td><time className="updated-time" dateTime={item.updatedAt}>
+                            {displayUpdatedAt(item.updatedAt)}
+                          </time></td>
                           <td><div className="row-actions"><SaveBadge state={itemStates[item.id] || "idle"} />
                             <button className="delete-button" onClick={() => void deleteItem(item)} aria-label={`删除${item.task}`}>×</button></div></td>
                         </tr>
                       );
                     })}
-                    {!report.items.length && <tr><td colSpan={8} className="empty-cell">
+                    {!report.items.length && <tr><td colSpan={10} className="empty-cell">
                       <span>⌁</span><strong>本周还没有项目事项</strong><p>点击“新增事项”开始记录项目进度</p>
                     </td></tr>}
                   </tbody>
                 </table>
               </div>
-              <p className="table-footnote">状态会根据开始时间与截止日期自动判断；手动修改后，可点击“自动”恢复自动计算。</p>
+              <p className="table-footnote">状态由用户手动指定；点击任意字段表头可切换升序或降序，默认按开始时间升序排列。</p>
             </section>
           </>
         )}
