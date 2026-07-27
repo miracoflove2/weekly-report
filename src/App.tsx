@@ -17,7 +17,6 @@ import {
 } from "./api";
 import {
   addDays,
-  deadlineLabel,
   displayDate,
   getMonday,
   shanghaiToday,
@@ -59,7 +58,7 @@ function emptyItem(): ProjectItem {
   };
 }
 
-type SortField = "task" | "assignee" | "startDate" | "dueDate" | "deadline"
+type SortField = "task" | "assignee" | "startDate" | "dueDate"
   | "completedDate" | "statusOverride" | "note" | "updatedAt";
 type SortDirection = "asc" | "desc";
 
@@ -97,6 +96,38 @@ function MarkdownNote({
       aria-label="编辑 Markdown 备注">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.note || "点击添加备注"}</ReactMarkdown>
     </button>
+  );
+}
+
+function MarkdownSection({
+  value,
+  label,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  label: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(!value);
+  return (
+    <div className="markdown-section">
+      <button className="markdown-toggle" type="button" onClick={() => setEditing((current) => !current)}>
+        {editing ? "预览 Markdown" : "编辑 Markdown"}
+      </button>
+      {editing ? (
+        <textarea value={value} onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder} maxLength={10000} aria-label={label} />
+      ) : (
+        <div className="markdown-preview" onDoubleClick={() => setEditing(true)}>
+          {value
+            ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+            : <p className="markdown-empty">暂无内容，点击“编辑 Markdown”开始填写。</p>}
+        </div>
+      )}
+      <div className="char-count">{value.length} / 10,000</div>
+    </div>
   );
 }
 
@@ -154,8 +185,8 @@ export default function App() {
   });
   const [itemStates, setItemStates] = useState<Record<string, SaveState>>({});
   const [toast, setToast] = useState("");
-  const [sortField, setSortField] = useState<SortField>("startDate");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortField, setSortField] = useState<SortField>("assignee");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const timers = useRef<Partial<Record<SectionName, ReturnType<typeof setTimeout>>>>({});
 
   const load = useCallback(async (targetWeek: string) => {
@@ -287,7 +318,6 @@ export default function App() {
   const weekEnd = addDays(week, 6);
   const currentWeek = week === getMonday();
   const sortValue = (item: ProjectItem): string | number => {
-    if (sortField === "deadline") return item.dueDate ? new Date(item.dueDate).getTime() : 0;
     return item[sortField] || "";
   };
   const sortedItems = [...report.items].sort((left, right) => {
@@ -377,14 +407,9 @@ export default function App() {
                       <div><h2>{info.title}</h2><p>{info.hint}</p></div>
                       <SaveBadge state={sectionStates[section]} />
                     </div>
-                    <textarea
-                      value={report.sections[section]}
-                      onChange={(event) => changeSection(section, event.target.value)}
+                    <MarkdownSection value={report.sections[section]} label={info.title}
                       placeholder={info.hint}
-                      maxLength={10000}
-                      aria-label={info.title}
-                    />
-                    <div className="char-count">{report.sections[section].length} / 10,000</div>
+                      onChange={(value) => changeSection(section, value)} />
                   </section>
                 );
               })}
@@ -403,11 +428,10 @@ export default function App() {
                     <th>{sortHeader("assignee", "执行人")}</th>
                     <th>{sortHeader("startDate", "开始时间")}</th>
                     <th>{sortHeader("dueDate", "截止日期")}</th>
-                    <th>{sortHeader("deadline", "距离截止日")}</th>
                     <th>{sortHeader("completedDate", "完成时间")}</th>
+                    <th>{sortHeader("updatedAt", "更新时间")}</th>
                     <th>{sortHeader("statusOverride", "状态")}</th>
                     <th>{sortHeader("note", "备注")}</th>
-                    <th>{sortHeader("updatedAt", "更新时间")}</th>
                     <th>操作</th>
                   </tr></thead>
                   <tbody>
@@ -428,11 +452,12 @@ export default function App() {
                             onBlur={() => void persistItem(item.id)} /></td>
                           <td><input type="date" value={item.dueDate} min={item.startDate} onChange={(e) => changeItem(item.id, "dueDate", e.target.value)}
                             onBlur={() => void persistItem(item.id)} /></td>
-                          <td><span className={`deadline ${deadlineLabel(item.dueDate).startsWith("已") ? "overdue" : ""}`}>
-                            {deadlineLabel(item.dueDate)}</span></td>
                           <td><input type="date" value={item.completedDate || ""}
                             onChange={(e) => changeItem(item.id, "completedDate", e.target.value)}
                             onBlur={() => void persistItem(item.id)} /></td>
+                          <td><time className="updated-time" dateTime={item.updatedAt}>
+                            {displayUpdatedAt(item.updatedAt)}
+                          </time></td>
                           <td>
                             <div className="status-cell">
                               <select className={`status-select status-${status}`} value={status}
@@ -445,21 +470,18 @@ export default function App() {
                           <td><MarkdownNote item={item}
                             onChange={(value) => changeItem(item.id, "note", value)}
                             onBlur={() => void persistItem(item.id)} /></td>
-                          <td><time className="updated-time" dateTime={item.updatedAt}>
-                            {displayUpdatedAt(item.updatedAt)}
-                          </time></td>
                           <td><div className="row-actions"><SaveBadge state={itemStates[item.id] || "idle"} />
                             <button className="delete-button" onClick={() => void deleteItem(item)} aria-label={`删除${item.task}`}>×</button></div></td>
                         </tr>
                       );
                     })}
-                    {!report.items.length && <tr><td colSpan={10} className="empty-cell">
+                    {!report.items.length && <tr><td colSpan={9} className="empty-cell">
                       <span>⌁</span><strong>本周还没有项目事项</strong><p>点击“新增事项”开始记录项目进度</p>
                     </td></tr>}
                   </tbody>
                 </table>
               </div>
-              <p className="table-footnote">状态由用户手动指定；点击任意字段表头可切换升序或降序，默认按开始时间升序排列。</p>
+              <p className="table-footnote">状态由用户手动指定；点击任意字段表头可切换升序或降序，默认按执行人降序排列。</p>
             </section>
           </>
         )}

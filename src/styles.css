@@ -95,12 +95,12 @@ h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
 }
 .primary-button:hover { background: #d4f57e; }
 .table-wrap { overflow-x: auto; border: 1px solid #e5e9e5; border-radius: 9px; }
-table { border-collapse: collapse; width: 100%; min-width: 1580px; table-layout: fixed; }
+table { border-collapse: collapse; width: 100%; min-width: 1460px; table-layout: fixed; }
 th { background: #f7f8f6; color: #7d867f; text-align: left; font-size: 11px; font-weight: 600; padding: 12px 10px; border-bottom: 1px solid var(--line); }
 td { padding: 10px; border-bottom: 1px solid #edf0ed; vertical-align: middle; background: white; }
 tbody tr:last-child td { border-bottom: 0; }
-th:nth-child(1) { width: 220px; } th:nth-child(2) { width: 110px; } th:nth-child(3), th:nth-child(4), th:nth-child(6) { width: 140px; }
-th:nth-child(5) { width: 120px; } th:nth-child(7) { width: 145px; } th:nth-child(8) { width: 230px; } th:nth-child(9) { width: 150px; } th:nth-child(10) { width: 88px; }
+th:nth-child(1) { width: 220px; } th:nth-child(2) { width: 110px; } th:nth-child(3), th:nth-child(4), th:nth-child(5) { width: 140px; }
+th:nth-child(6) { width: 150px; } th:nth-child(7) { width: 145px; } th:nth-child(8) { width: 230px; } th:nth-child(9) { width: 88px; }
 .sort-button { width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .sort-button span { color: #aab2ac; }
 td input, td select, td textarea {
@@ -112,8 +112,20 @@ td textarea {
 }
 td input:hover, td select:hover, td textarea:hover { border-color: #dbe2dc; }
 td input:focus, td select:focus, td textarea:focus { border-color: #80a18a; outline: 2px solid #e6eee8; background: white; }
-.deadline { font-size: 11px; color: #487159; white-space: nowrap; }
-.deadline.overdue { color: #bb4f45; }
+.markdown-section { position: relative; }
+.markdown-toggle { display: block; margin: -3px 0 7px auto; border: 0; background: transparent; color: #517661; font-size: 10px; cursor: pointer; }
+.markdown-preview { height: 134px; padding: 13px 14px; border: 1px solid #e3e8e4; border-radius: 6px; overflow: auto; color: #435047; font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
+.markdown-preview > :first-child { margin-top: 0; }
+.markdown-preview > :last-child { margin-bottom: 0; }
+.markdown-preview h1, .markdown-preview h2, .markdown-preview h3 { margin: 10px 0 6px; font-size: 15px; }
+.markdown-preview p, .markdown-preview ul, .markdown-preview ol { margin: 0 0 8px; }
+.markdown-preview ul, .markdown-preview ol { padding-left: 22px; }
+.markdown-preview code { padding: 1px 4px; border-radius: 3px; background: #eef1ee; }
+.markdown-preview pre { padding: 9px; border-radius: 5px; background: #eef1ee; overflow: auto; }
+.markdown-preview blockquote { margin: 8px 0; padding-left: 10px; border-left: 3px solid #b9cdbd; color: #68736b; }
+.markdown-preview table { min-width: 0; table-layout: auto; }
+.markdown-preview th, .markdown-preview td { width: auto; padding: 4px 7px; border: 1px solid #dfe5e0; font-size: 11px; }
+.markdown-empty { color: #a1aaa3; }
 .status-cell { display: flex; align-items: center; gap: 5px; }
 .status-select { font-weight: 600; }
 .status-未启动 { color: #6c7670; background: #edf0ee; }
